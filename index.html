@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>宏观雷达 · 利率与市场情绪监控台</title>
+<title>宏观雷达</title>
 <style>
   :root{
     --bg:#0A0E16; --panel:#121927; --panel2:#0F1521; --border:#243044;
@@ -168,8 +168,7 @@
   <!-- ===== 头部 ===== -->
   <header class="head">
     <div>
-      <h1><span class="dot"></span>宏观雷达 · 利率与市场情绪监控台</h1>
-      <div class="sub">本地自动滚动 · 下一场会议自动切换 · 日历滚动覆盖 2026-2027 · 市场公允判断为准</div>
+      <h1><span class="dot"></span>宏观雷达</h1>
     </div>
     <div class="stamp" id="stampBox">加载中…</div>
   </header>
@@ -226,7 +225,7 @@
     </section>
 
     <section>
-      <div class="sec-title"><span class="bar"></span>市场公允判断：下一场会议利率路径<span class="hint">照本宣科 —— 直接读取市场定价，不做 AI 主观判断</span></div>
+      <div class="sec-title"><span class="bar"></span>市场公允判断：下一场会议利率路径</div>
       <div class="fw-wrap">
         <div class="fw-panel">
           <h3 id="fwH1">—</h3>
@@ -302,11 +301,6 @@
 
   <!-- ===== 页脚 ===== -->
   <footer class="foot">
-    <b>自动更新机制（本页在本地自动运行的部分）：</b><br>
-    ① 下一场 FOMC 按北京时间自动切换：9/17 后切至 10/27-28，再切至 12/8-9，2027 全年八场会议日程已按美联储官网（fomccalendars，2026-08-19 更新）预填并显示"待更新"。<br>
-    ② 日历中已过时间的事件自动标记"已发生"并移入大事记（按时间倒序）；大事记不再手工维护。<br>
-    ③ 非农（每月首个周五）、美国 CPI/PPI/PCE（2026 年精确日期已核验，2027 年起为常规窗口）、中国 CPI/PPI（每月 9 日）、中国 LPR（每月 20 日）等惯例事件按规则自动生成未来 12 个月，时间自动滚到 2027 年。<br>
-    ④ 概率、收益率、CPI/非农结果等数字为静态快照（页面标注更新日期），需每日核验数据源后由 AI 更新（可配置每日定时任务）。<br>
     <b>实时行情数据源：</b>东方财富公开行情接口（push2.eastmoney.com/api/qt/ulist.np/get，无鉴权、免费、支持浏览器跨域直连），每 60 秒自动刷新，手动可点"刷新"按钮；字段 f2 最新价 / f3 涨跌幅 / f4 涨跌额；美债收益率（US10Y/US30Y/US2Y/US5Y）为东财口径实时报价，与 FRED/财政部 H.15 官方收盘数据可能存在小幅差异；美元指数（UDI）、美股三大指数（NDX/SPX/DJIA）、WTI 原油（CL00Y）、COMEX 黄金（GC00Y）同源。接口异常或断网时自动回退页面静态快照并提示。<br>
     <b>数据来源与口径：</b><br>
     ① FOMC 会议日程与利率决议：美联储官网（federalreserve.gov，2026 年八次会议日程 2026-08-19 更新；2027 年日程 2025-09-05 公布、2026-08-19 页面确认）。当前目标区间 3.50-3.75%，2026 年 1/27-28、3/17-18、4/28-29、6/16-17、7/28-29 五次决议均维持不变。北京时间换算：美东时间 +12 小时（夏令时）/ +13 小时（冬令时）。<br>
@@ -758,6 +752,24 @@
     for(i=0;i<FIXED.length;i++){
       var f = FIXED[i];
       evs.push({y:f.y, d:f.d, t:f.t, type:f.type, rel:f.rel, name:f.name, sub:f.sub, s:f.s||"", ts:tsOf(f)});
+    }
+    /* 2026 已发生月度数据补全（大事记从 2026-01-01 起）：截至上月的非农/CPI/PPI/PCE/中国 CPI/PPI/LPR */
+    var nowD = new Date();
+    var curY = nowD.getFullYear(), curM = nowD.getMonth()+1;
+    for(var yy=2026; yy<=curY; yy++){
+      var mMax = (yy===curY) ? curM-1 : 12;
+      for(var mm=1; mm<=mMax; mm++){
+        var fst = new Date(yy, mm-1, 1);
+        var dw = fst.getDay();
+        var frd = 1 + ((5 - dw + 7) % 7);
+        evs.push({y:yy, d:pad(mm)+"-"+pad(frd), t:(mm>=3&&mm<=10)?"20:30":"21:30", type:"us", rel:"high", name:"美国非农就业报告（NFP）", sub:"BLS · 每月首个周五发布 · 结果待核验", s:"", ts:Date.UTC(yy, mm-1, frd, 4, 0, 0)});
+        evs.push({y:yy, d:pad(mm)+"-15", t:"20:30", type:"us", rel:"high", name:"美国 CPI（含核心 CPI）", sub:"BLS 常规发布窗口（10-16 日）· 结果待核验", s:"", ts:Date.UTC(yy, mm-1, 15, 4, 0, 0)});
+        evs.push({y:yy, d:pad(mm)+"-14", t:"20:30", type:"us", rel:"low", name:"美国 PPI（生产者物价指数）", sub:"BLS 常规发布窗口（CPI 前一日附近）· 结果待核验", s:"", ts:Date.UTC(yy, mm-1, 14, 4, 0, 0)});
+        var lastD = new Date(yy, mm, 0).getDate();
+        evs.push({y:yy, d:pad(mm)+"-"+pad(lastD), t:(mm>=3&&mm<=10)?"20:30":"21:30", type:"us", rel:"low", name:"美国核心 PCE 物价指数", sub:"BEA · 美联储锚定通胀指标 · 每月末发布 · 结果待核验", s:"", ts:Date.UTC(yy, mm-1, lastD, 4, 0, 0)});
+        evs.push({y:yy, d:pad(mm)+"-09", t:"09:30", type:"ov", rel:"low", name:"中国 CPI / PPI", sub:"国家统计局 · 每月 9 日前后惯例发布 · 结果待核验", s:"", ts:Date.UTC(yy, mm-1, 9, 4, 0, 0)});
+        evs.push({y:yy, d:pad(mm)+"-20", t:"09:00", type:"ov", rel:"high", name:"中国 LPR 报价（一年期 / 五年期以上）", sub:"中国人民银行 · 每月 20 日惯例（遇周末顺延）· 结果待核验", s:"", ts:Date.UTC(yy, mm-1, 20, 4, 0, 0)});
+      }
     }
     /* 规则事件：当前月起滚动 12 个月 */
     var ny = new Date();
