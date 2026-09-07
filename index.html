@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宏观雷达 · 利率与市场情绪监控台</title>
+<style>
+  :root{
+    --bg:#0A0E16; --panel:#121927; --panel2:#0F1521; --border:#243044;
+    --text:#E7ECF3; --sub:#93A0B4; --accent:#F0A83B;
+    --up:#E06050; --down:#3FA76B; --hold:#8A94A6; --blue:#5B8DEF; --teal:#45B7B1; --gold:#F0C44B; --rose:#E27AA0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--bg);}
+  body{color:var(--text);font-family:"PingFang SC","Microsoft YaHei","Segoe UI",Arial,sans-serif;font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 18px 40px;}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";}
+  /* 头部 */
+  .head{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--border);}
+  .head h1{font-size:22px;font-weight:700;letter-spacing:1px;}
+  .head h1 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);margin-right:10px;box-shadow:0 0 12px rgba(240,168,59,.8);}
+  .head .sub{color:var(--sub);font-size:12px;margin-top:6px;}
+  .stamp{font-size:12px;color:var(--sub);text-align:right;line-height:1.7;}
+  .stamp b{color:var(--accent);font-weight:600;}
+  /* Tab */
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px;border-bottom:1px solid var(--border);}
+  .tab{display:inline-block;padding:9px 18px;font-size:13.5px;font-weight:600;color:var(--sub);text-decoration:none;border-radius:10px 10px 0 0;border:1px solid transparent;border-bottom:none;cursor:pointer;user-select:none;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--accent);background:var(--panel);border-color:var(--border);position:relative;top:1px;}
+  .tab .cnt{font-size:11px;color:var(--sub);margin-left:5px;font-weight:400;}
+  .view{margin-top:22px;}
+  /* 区块标题 */
+  .sec-title{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;letter-spacing:.5px;margin-bottom:12px;flex-wrap:wrap;}
+  .sec-title .bar{width:4px;height:16px;background:var(--accent);border-radius:2px;}
+  .sec-title .hint{font-size:12px;font-weight:400;color:var(--sub);letter-spacing:0;}
+  /* 指标卡 */
+  .cards{display:flex;flex-wrap:wrap;gap:14px;}
+  .card{flex:1 1 210px;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px 16px;}
+  .card .k{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;}
+  .card .v{font-size:26px;font-weight:700;margin-top:8px;letter-spacing:.5px;}
+  .card .d{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.5;}
+  .card .tag{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;display:inline-block;margin-top:8px;}
+  .tag-hold{background:rgba(143,148,166,.16);color:#C6CDDB;}
+  .tag-up{background:rgba(224,96,80,.16);color:#F28B7E;}
+  .tag-down{background:rgba(63,167,107,.16);color:#6CC995;}
+  .tag-accent{background:rgba(240,168,59,.16);color:#F5BC66;}
+  /* FedWatch */
+  .fw-wrap{display:flex;flex-wrap:wrap;gap:14px;}
+  .fw-panel{flex:1 1 330px;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;}
+  .fw-panel h3{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .fw-panel h3 .mtg{font-size:12px;color:var(--accent);font-weight:600;}
+  .fw-panel .src{font-size:11px;color:var(--sub);margin-top:4px;}
+  .path{margin-top:14px;display:flex;flex-direction:column;gap:12px;}
+  .path-row .plabel{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;gap:10px;}
+  .path-row .plabel .r{color:var(--sub);}
+  .path-row .plabel .p{font-weight:700;}
+  .track{height:10px;background:#1B2434;border-radius:6px;overflow:hidden;}
+  .track .fill{height:100%;border-radius:6px;}
+  .fill-up{background:linear-gradient(90deg,#C94F42,#E06050);}
+  .fill-down{background:linear-gradient(90deg,#2E8B5D,#3FA76B);}
+  .fill-hold{background:linear-gradient(90deg,#5A6679,#7A8699);}
+  .fw-note{margin-top:14px;font-size:11.5px;color:var(--sub);border-top:1px dashed var(--border);padding-top:10px;line-height:1.6;}
+  .trend{display:flex;align-items:flex-end;gap:0;height:70px;margin-top:12px;padding:0 4px;}
+  .trend .tc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;}
+  .trend .tb{width:60%;background:linear-gradient(180deg,#F0A83B,#C9801F);border-radius:3px 3px 0 0;min-height:2px;}
+  .trend .tl{font-size:10px;color:var(--sub);white-space:nowrap;}
+  .trend .tv{font-size:10.5px;font-weight:700;color:var(--accent);}
+  .empty{color:var(--sub);font-size:12.5px;padding:14px 2px;line-height:1.7;}
+  .mini-btn{background:var(--panel);border:1px solid var(--border);color:var(--accent);font-size:11.5px;padding:4px 14px;border-radius:20px;cursor:pointer;font-weight:600;font-family:inherit;}
+  .mini-btn:hover{border-color:var(--accent);}
+  .live-badge{font-size:9.5px;background:rgba(240,168,59,.16);color:#F5BC66;border-radius:10px;padding:1px 7px;font-weight:600;vertical-align:1px;letter-spacing:.5px;}
+  .q-wrap{display:flex;flex-wrap:wrap;gap:10px;}
+  .q-card{flex:1 1 150px;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
+  .q-card .k{font-size:11px;color:var(--sub);}
+  .q-card .v{font-size:19px;font-weight:700;margin-top:4px;letter-spacing:.3px;}
+  .q-card .ch{font-size:11px;margin-top:3px;font-weight:600;}
+  .ch-up{color:#F28B7E;} .ch-down{color:#6CC995;} .ch-hold{color:#C6CDDB;}
+  .q-note{font-size:11px;color:var(--sub);margin-top:8px;line-height:1.6;}
+  .q-note b{color:var(--accent);font-weight:600;}
+  /* 三档概率 */
+  .bs-wrap{display:flex;flex-wrap:wrap;gap:14px;}
+  .bs-col{flex:1 1 320px;min-width:0;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;}
+  .bs-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .bs-head h3{font-size:13px;font-weight:700;}
+  .bs-head .ratio{font-size:18px;font-weight:800;letter-spacing:.5px;line-height:1.4;text-align:right;}
+  .bs-legend{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);flex-wrap:wrap;gap:4px;}
+  .bs-note{font-size:11px;color:var(--sub);margin:8px 0 0;line-height:1.65;}
+  .bs-map{margin-top:10px;padding:9px 11px;border:1px dashed rgba(240,168,59,.45);border-radius:10px;font-size:12px;color:#F5BC66;line-height:1.65;}
+  .bs-map b{color:var(--accent);}
+  .sce{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:4px 0 10px;}
+  .sce-row{display:flex;flex-wrap:wrap;gap:4px 12px;padding:8px 12px;font-size:12.5px;border-bottom:1px solid rgba(36,48,68,.4);align-items:center;line-height:1.55;}
+  .sce-row:last-child{border-bottom:none;}
+  .sce-row.head{background:var(--panel2);font-weight:700;font-size:12px;color:var(--sub);}
+  .sce-row .c1{flex:1 1 200px;font-weight:600;color:var(--text);}
+  .sce-row.head .c1{color:var(--sub);font-weight:700;}
+  .sce-row .c2{flex:1 1 110px;color:var(--sub);font-size:12px;}
+  .sce-row .c3{flex:1 1 300px;}
+  .pill{display:inline-block;padding:1px 8px;border-radius:14px;font-size:11.5px;margin:1px 6px 1px 0;font-weight:600;}
+  .pill-up{background:rgba(224,96,80,.16);color:#F28B7E;}
+  .pill-hold{background:rgba(143,148,166,.16);color:#C6CDDB;}
+  .pill-down{background:rgba(63,167,107,.16);color:#6CC995;}
+  .reason{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid rgba(36,48,68,.55);font-size:13px;line-height:1.55;}
+  .reason:last-child{border-bottom:none;}
+  .reason .ic{flex:0 0 18px;height:18px;border-radius:50%;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+  .ic-bull{background:rgba(224,96,80,.18);color:#F28B7E;}
+  .ic-bear{background:rgba(63,167,107,.18);color:#6CC995;}
+  .reason .src{color:var(--sub);font-size:11px;display:block;margin-top:2px;}
+  /* 日历 */
+  .cal-legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-bottom:12px;font-size:11.5px;color:var(--sub);align-items:center;}
+  .cal-legend .lg{display:inline-flex;align-items:center;gap:5px;}
+  .sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;}
+  .sw-high{background:rgba(224,96,80,.4);border:1px solid rgba(224,96,80,.7);}
+  .sw-low{background:rgba(224,96,80,.14);border:1px solid rgba(224,96,80,.4);}
+  .sw-none{background:#1B2434;border:1px solid var(--border);}
+  .cal-wrap{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+  .cal-month{border-bottom:1px solid var(--border);}
+  .cal-month:last-child{border-bottom:none;}
+  .cal-mh{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--panel2);}
+  .cal-mh .m{font-size:14px;font-weight:800;color:var(--accent);letter-spacing:1px;}
+  .cal-mh .c{font-size:11px;color:var(--sub);}
+  .cal-mh .tz{font-size:10.5px;color:var(--sub);margin-left:auto;}
+  .cal-row{display:flex;flex-wrap:wrap;gap:6px 12px;border-bottom:1px solid rgba(36,48,68,.35);padding:9px 16px;align-items:flex-start;background:transparent;}
+  .cal-row:last-child{border-bottom:none;}
+  .cal-row.rel-high{background:rgba(224,96,80,.14);}
+  .cal-row.rel-low{background:rgba(224,96,80,.055);}
+  .cal-row.rel-high .cal-name{color:#FFDAD3;}
+  .cal-time{flex:0 0 132px;font-size:13px;font-weight:700;padding-top:2px;}
+  .cal-time .min{font-size:11px;color:var(--sub);font-weight:400;margin-left:5px;}
+  .cal-main{flex:1 1 400px;min-width:0;}
+  .cal-name{font-size:13.5px;font-weight:600;}
+  .cal-sub{font-size:11.5px;color:var(--sub);margin-top:3px;line-height:1.5;}
+  .tp{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:20px;margin-right:6px;vertical-align:1px;font-weight:500;}
+  .tp-cb{background:rgba(240,168,59,.15);color:#F5BC66;}
+  .tp-us{background:rgba(91,141,239,.14);color:#7FA6F4;}
+  .tp-ov{background:rgba(69,183,177,.14);color:#63CFC9;}
+  .tp-stock{background:rgba(226,122,160,.14);color:#EDA3C0;}
+  .tp-ind{background:rgba(240,196,75,.13);color:#F4D47E;}
+  .tp-pol{background:rgba(224,96,80,.13);color:#F28B7E;}
+  .st{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:20px;margin-right:6px;vertical-align:1px;font-weight:500;}
+  .st-done{background:rgba(143,148,166,.16);color:#C6CDDB;}
+  .st-wait{background:rgba(91,141,239,.10);color:#7FA6F4;border:1px dashed rgba(91,141,239,.4);}
+  .st-regular{background:rgba(69,183,177,.10);color:#63CFC9;border:1px dashed rgba(69,183,177,.4);}
+  .cal-flag{flex:0 0 auto;font-size:11px;color:var(--sub);text-align:right;align-self:center;}
+  /* 大事记 */
+  .tl{position:relative;margin-left:6px;padding-left:22px;border-left:1px solid var(--border);display:flex;flex-direction:column;gap:0;}
+  .tl-item{position:relative;padding:10px 0 10px 6px;}
+  .tl-item .tdot{position:absolute;left:-27px;top:15px;width:9px;height:9px;border-radius:50%;background:#5A6679;border:2px solid var(--bg);}
+  .tl-item .tdate{font-size:12px;font-weight:700;color:var(--sub);}
+  .tl-item .tname{font-size:13.5px;font-weight:600;margin-top:2px;}
+  .tl-item .tdesc{font-size:12px;color:var(--sub);margin-top:3px;line-height:1.55;}
+  /* 页脚 */
+  .foot{margin-top:28px;padding-top:14px;border-top:1px solid var(--border);font-size:11.5px;color:var(--sub);line-height:1.8;}
+  .foot b{color:#C6CDDB;font-weight:600;}
+  @media(max-width:560px){
+    .head h1{font-size:18px;}
+    .card .v{font-size:22px;}
+    .tab{padding:8px 12px;font-size:13px;}
+    .cal-time{flex-basis:118px;}
+    .cal-flag{text-align:left;}
+    .trend .tl{font-size:9px;}
+    .bs-head .ratio{font-size:15px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== 头部 ===== -->
+  <header class="head">
+    <div>
+      <h1><span class="dot"></span>宏观雷达 · 利率与市场情绪监控台</h1>
+      <div class="sub">本地自动滚动 · 下一场会议自动切换 · 日历滚动覆盖 2026-2027 · 市场公允判断为准</div>
+    </div>
+    <div class="stamp" id="stampBox">加载中…</div>
+  </header>
+
+  <!-- ===== Tab 导航 ===== -->
+  <nav class="tabs">
+    <a class="tab active" data-tab="overview" href="#overview">总览<span class="cnt">指标 / 概率 / 利率路径</span></a>
+    <a class="tab" data-tab="calendar" href="#calendar">宏观日历<span class="cnt" id="calCnt"></span></a>
+    <a class="tab" data-tab="timeline" href="#timeline">大事记<span class="cnt" id="tlCnt"></span></a>
+  </nav>
+
+  <!-- ===== 视图：总览 ===== -->
+  <div class="view" id="view-overview">
+    <section>
+      <div class="sec-title"><span class="bar"></span>核心指标<span class="hint">官方口径，见页脚来源</span></div>
+      <div class="cards">
+        <div class="card">
+          <div class="k">联邦基金利率（目标区间）</div>
+          <div class="v num">3.50–3.75%</div>
+          <div class="d" id="coreRateD">2025-12 起维持不变 · 2026 年五次 FOMC 均按兵不动</div>
+          <span class="tag tag-hold">维持</span>
+        </div>
+        <div class="card">
+          <div class="k">10 年期美债收益率 <span class="live-badge">实时</span></div>
+          <div class="v num" id="liveT10" style="color:var(--up);">4.78%</div>
+          <div class="d" id="liveT10D">快照 9/4 · 实时加载中…</div>
+          <span class="tag tag-up">对债券偏空</span>
+        </div>
+        <div class="card">
+          <div class="k">30 年期美债收益率 <span class="live-badge">实时</span></div>
+          <div class="v num" id="liveT30" style="color:var(--up);">5.28%</div>
+          <div class="d" id="liveT30D">快照 9/1 · 实时加载中…</div>
+          <span class="tag tag-up">对债券偏空</span>
+        </div>
+        <div class="card">
+          <div class="k">2 年期美债收益率 <span class="live-badge">实时</span></div>
+          <div class="v num" id="liveT2" style="color:var(--hold);">4.41%</div>
+          <div class="d" id="liveT2D">快照 9/4 · 政策利率风向标</div>
+          <span class="tag tag-hold">政策利率风向标</span>
+        </div>
+        <div class="card">
+          <div class="k">下次议息会议<span id="nextSepBadge"></span></div>
+          <div class="v num" style="font-size:22px;color:var(--accent);" id="nextCardV">—</div>
+          <div class="d" id="nextCardD">加载中…</div>
+          <span class="tag tag-accent" id="nextCardTag">市场焦点</span>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-title"><span class="bar"></span>实时行情<span class="hint">免费 API 直连（东方财富公开行情）· 每 60 秒自动刷新 · 获取失败自动回退快照</span><button class="mini-btn" id="reloadBtn">手动刷新</button></div>
+      <div class="q-wrap" id="qBox"><div class="empty">正在连接行情接口…</div></div>
+      <div class="q-note">数据源：东方财富公开行情接口（push2.eastmoney.com，无鉴权免费）· 更新时间：<b id="qTime">—</b>（北京时间）· 美债/指数/商品均为美东交易时段最新价，休市时显示最近收盘价</div>
+    </section>
+
+    <section>
+      <div class="sec-title"><span class="bar"></span>市场公允判断：下一场会议利率路径<span class="hint">照本宣科 —— 直接读取市场定价，不做 AI 主观判断</span></div>
+      <div class="fw-wrap">
+        <div class="fw-panel">
+          <h3 id="fwH1">—</h3>
+          <div class="src" id="fwSrc1">—</div>
+          <div class="path" id="pathSep"></div>
+          <div class="fw-note" id="fwNote1">—</div>
+        </div>
+        <div class="fw-panel">
+          <h3 id="fwH2">—</h3>
+          <div class="src" id="fwSrc2">—</div>
+          <div class="path" id="pathOct"></div>
+          <div class="fw-note" id="fwNote2">—</div>
+        </div>
+        <div class="fw-panel" style="flex:1 1 100%;">
+          <h3>9 月会议加息 25bp 概率的近期演化<span class="mtg">市场预期的摇摆路径（截至 9/7，历史快照）</span></h3>
+          <div class="src">口径：CME“美联储观察”各时点测算，见页脚来源</div>
+          <div class="trend" id="trendBox"></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-title"><span class="bar"></span>市场利率路径定价：下一场会议三档概率<span class="hint" id="threeHint">加息 / 维持 / 降息</span></div>
+      <div class="bs-wrap">
+        <div class="bs-col" style="flex:1 1 100%;">
+          <div class="bs-head">
+            <h3 id="threeTitle">—</h3>
+            <div class="ratio num" id="threeRatio">—</div>
+          </div>
+          <div class="path" id="pathThree"></div>
+          <div class="bs-legend" id="threeLegend"></div>
+          <div class="bs-note" id="threeNote">—</div>
+          <div class="bs-map"><b>三档兑现时的资产含义：</b>加息 → 美债偏空 · 美元偏多 · 黄金承压 · 成长股估值受压；维持 → 冲击有限，利率高位震荡；降息 → 美债偏多 · 美元走弱 · 黄金受益 · 估值修复。</div>
+        </div>
+        <div class="bs-col">
+          <div class="bs-head"><h3 style="color:#F28B7E;" id="bullTitle">加息方向依据</h3></div>
+          <div id="bullList"></div>
+        </div>
+        <div class="bs-col">
+          <div class="bs-head"><h3 style="color:#6CC995;" id="bearTitle">维持 / 宽松方向依据</h3></div>
+          <div id="bearList"></div>
+        </div>
+        <div class="bs-col" style="flex:1 1 100%;">
+          <div class="bs-head"><h3 style="color:var(--accent);" id="sceTitle">下一关键事件推演</h3></div>
+          <div id="sceBox"></div>
+          <div class="bs-note" id="sceNote">—</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== 视图：宏观日历 ===== -->
+  <div class="view" id="view-calendar" hidden>
+    <section>
+      <div class="sec-title"><span class="bar"></span>宏观日历<span class="hint">时间均为北京时间 · 精确到分钟 · 已确定时间提前填好并标注“未发生” · 每月惯例事件自动滚动至未来 12 个月</span></div>
+      <div class="cal-legend">
+        <span class="lg"><i class="sw sw-high"></i>与中美利率强相关（红底）</span>
+        <span class="lg"><i class="sw sw-low"></i>弱相关（粉底）</span>
+        <span class="lg"><i class="sw sw-none"></i>相关性弱/无</span>
+        <span class="lg tp tp-cb">央行决议</span><span class="lg tp tp-us">美国数据</span><span class="lg tp tp-ov">海外宏观</span><span class="lg tp tp-stock">个股事件</span><span class="lg tp tp-ind">行业事件</span><span class="lg tp tp-pol">政治大选</span>
+      </div>
+      <div class="cal-wrap" id="calBox"></div>
+    </section>
+  </div>
+
+  <!-- ===== 视图：大事记 ===== -->
+  <div class="view" id="view-timeline" hidden>
+    <section>
+      <div class="sec-title"><span class="bar"></span>大事记<span class="hint">自动收录已发生事件（日历中事件到点后自动翻转并移入此处）· 已发生事实用于修正对后续会议的宏观预期</span></div>
+      <div class="tl" id="tlBox"></div>
+    </section>
+  </div>
+
+  <!-- ===== 页脚 ===== -->
+  <footer class="foot">
+    <b>自动更新机制（本页在本地自动运行的部分）：</b><br>
+    ① 下一场 FOMC 按北京时间自动切换：9/17 后切至 10/27-28，再切至 12/8-9，2027 全年八场会议日程已按美联储官网（fomccalendars，2026-08-19 更新）预填并显示"待更新"。<br>
+    ② 日历中已过时间的事件自动标记"已发生"并移入大事记（按时间倒序）；大事记不再手工维护。<br>
+    ③ 非农（每月首个周五）、美国 CPI/PPI/PCE（2026 年精确日期已核验，2027 年起为常规窗口）、中国 CPI/PPI（每月 9 日）、中国 LPR（每月 20 日）等惯例事件按规则自动生成未来 12 个月，时间自动滚到 2027 年。<br>
+    ④ 概率、收益率、CPI/非农结果等数字为静态快照（页面标注更新日期），需每日核验数据源后由 AI 更新（可配置每日定时任务）。<br>
+    <b>实时行情数据源：</b>东方财富公开行情接口（push2.eastmoney.com/api/qt/ulist.np/get，无鉴权、免费、支持浏览器跨域直连），每 60 秒自动刷新，手动可点"刷新"按钮；字段 f2 最新价 / f3 涨跌幅 / f4 涨跌额；美债收益率（US10Y/US30Y/US2Y/US5Y）为东财口径实时报价，与 FRED/财政部 H.15 官方收盘数据可能存在小幅差异；美元指数（UDI）、美股三大指数（NDX/SPX/DJIA）、WTI 原油（CL00Y）、COMEX 黄金（GC00Y）同源。接口异常或断网时自动回退页面静态快照并提示。<br>
+    <b>数据来源与口径：</b><br>
+    ① FOMC 会议日程与利率决议：美联储官网（federalreserve.gov，2026 年八次会议日程 2026-08-19 更新；2027 年日程 2025-09-05 公布、2026-08-19 页面确认）。当前目标区间 3.50-3.75%，2026 年 1/27-28、3/17-18、4/28-29、6/16-17、7/28-29 五次决议均维持不变。北京时间换算：美东时间 +12 小时（夏令时）/ +13 小时（冬令时）。<br>
+    ② 加息概率：CME FedWatch（CME“美联储观察”）。9 月会议：2026-09-07 数据（加息 25bp 58.3% / 维持 41.7%）；10 月会议：2026-08-25 口径（维持 43.0 / 加息 25bp 46.0 / 加息 50bp 11.0）；后续会议待数据更新。<br>
+    ③ 美债收益率：美国财政部 H.15 / FRED（10Y：9/3 收 4.77%、9/4 报 4.78%；30Y：9/1 收 5.277%）；9/4 非农后 2Y 报 4.406%。<br>
+    ④ 美国数据发布日：BLS 官方日历（8 月 CPI 定于 9/11 发布）、BLS 惯例（非农为每月首个周五）；标注"常规窗口"的日期为规律推断、以官方当月公告为准。PPI 9/10、PCE 月末、中国数据（每月 9 日 CPI/PPI、每月 20 日 LPR，遇周末顺延）为惯例规律。<br>
+    ⑤ 海外央行：ECB 官方日程（9/9-10 柏林、10/28-29、12/16-17）；BOJ 官方日程（9/17-18、10/29-30、12/17-18，决议约北京时间 11:00 前后）；BOE 官方日程（9/17、11/5、12/17）。<br>
+    ⑥ 个股与行业事件：苹果官网（9/10 01:00 发布会，新 CEO 特努斯首秀、折叠屏 iPhone Ultra）；Meta Connect 官网（9/23-24，keynote 北京时间 9/24 凌晨）；OpenAI 官方（DevDay 9/29 旧金山）；微软 Ignite 官网（11/17-20 旧金山）；AWS re:Invent（11/30-12/4）；英伟达官网（GTC 柏林 10/20-22、GTC 华盛顿 11/30-12/3、FY27 Q3 财报 11/17 盘后）；财报日期：苹果 10/29 盘后、特斯拉 10 月下旬（约 10/21-28，以官方为准），均来自财报日历聚合站。<br>
+    ⑦ 政治：2026 美国中期选举投票日 11/3（FEC/官方口径），改选全部 435 个众议院席位与约 1/3 参议院席位。<br>
+    ⑧ 相关性分档口径：与中美利率强相关（红底）= 直接决定或高度影响中美利率预期的事件（FOMC、美国 CPI/非农、中国 LPR）；弱相关（粉底）= 间接影响利率预期（PPI、PCE、欧日英央行、中国 CPI/PPI、中期选举、中央经济工作会议）；个股/行业事件相关性弱或无，不作底色标记。<br>
+    ⑨ 千亿市值口径：美股"重要公司"按市值约 1000 亿美元以上计（2026-09 口径，约 60 余家）。日历收录其中已确认或惯例窗口的 Q3/Q4 财报（微软 10/27-28、Alphabet/Meta 10/28、亚马逊/苹果 10/29、英伟达 11/17 等）；未单列的其余千亿公司财报集中于 10 月底-11 月初财报季，以官方公告为准。新确认的财报日期由 AI 在每日核验时插入。<br>
+    ⑩ 市场背景：新主席沃什 2026 年 5 月上任并取消前瞻指引（偏鹰）；通胀高于 2% 目标已超五年；8 月非农 +16.2 万（9/4 发布，超预期）；中东局势推升油价与通胀预期。<br>
+    标注【已发生】的事件为已落地事实，【未发生】为已排期或常规窗口的待办事件，届时自动翻转状态。
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var TYPES = {cb:"央行决议", us:"美国数据", ov:"海外宏观", stock:"个股事件", ind:"行业事件", pol:"政治大选"};
+
+  /* ============ 会议列表（含 2027 全年，美联储官网核验） ============ */
+  var MEETINGS = [
+    {mo:"9月", day:"15-16日", iso:"2026-09-17T02:00:00+08:00", sep:true, src:"CME FedWatch（2026-09-07）",
+     note:"8 月非农（9/4）+16.2 万超预期后加息定价升至近六成；9/11 20:30 CPI 是决议前最后一块拼图。",
+     fw:[{label:"加息 25bp → 3.75-4.00%", p:58.3, cls:"up"},{label:"维持不变 3.50-3.75%", p:41.7, cls:"hold"},{label:"降息 25bp → 3.25-3.50%", p:0.0, cls:"down"}]},
+    {mo:"10月", day:"27-28日", iso:"2026-10-29T02:00:00+08:00", sep:false, src:"CME FedWatch（8/25 口径，待更新）",
+     note:"若 9 月未动，10 月仍是加息焦点；若 9 月已加息，本次焦点转为是否连续行动。",
+     fw:[{label:"维持不变 3.50-3.75%", p:43.0, cls:"hold"},{label:"加息 25bp → 3.75-4.00%", p:46.0, cls:"up"},{label:"加息 50bp → 4.00-4.25%", p:11.0, cls:"up"}]},
+    {mo:"12月", day:"8-9日", iso:"2026-12-10T03:00:00+08:00", sep:true, src:"待数据更新",
+     note:"2026 年度收官会议（带点阵图）。花旗、丹斯克预计 12 月与 2027 年 3 月各加息 25bp 至 4.00-4.25%。",
+     fw:null},
+    {mo:"1月", day:"26-27日", iso:"2027-01-28T03:00:00+08:00", sep:false, src:"待数据更新",
+     note:"2027 年首场会议（日程已按美联储官网预填，概率待 CME 更新）。",
+     fw:null},
+    {mo:"3月", day:"16-17日", iso:"2027-03-18T02:00:00+08:00", sep:true, src:"待数据更新",
+     note:"带点阵图（SEP）。丹斯克预计 2027 年 3 月再加息 25bp。",
+     fw:null},
+    {mo:"4月", day:"27-28日", iso:"2027-04-29T02:00:00+08:00", sep:false, src:"待数据更新",
+     note:"日程已预填，概率待更新。",
+     fw:null},
+    {mo:"6月", day:"8-9日", iso:"2027-06-10T02:00:00+08:00", sep:true, src:"待数据更新",
+     note:"带点阵图（SEP）。",
+     fw:null},
+    {mo:"7月", day:"27-28日", iso:"2027-07-29T02:00:00+08:00", sep:false, src:"待数据更新",
+     note:"日程已预填，概率待更新。",
+     fw:null},
+    {mo:"9月", day:"14-15日", iso:"2027-09-16T02:00:00+08:00", sep:true, src:"待数据更新",
+     note:"带点阵图（SEP）。",
+     fw:null},
+    {mo:"10月", day:"26-27日", iso:"2027-10-28T02:00:00+08:00", sep:false, src:"待数据更新",
+     note:"日程已预填，概率待更新。",
+     fw:null},
+    {mo:"12月", day:"7-8日", iso:"2027-12-09T03:00:00+08:00", sep:true, src:"待数据更新",
+     note:"2027 年度收官会议（带点阵图）。",
+     fw:null}
+  ];
+
+  /* ============ 静态快照（每日核验后由 AI 更新） ============ */
+  var D = {
+    stamp: "2026-09-07",
+    stampTime: "13:30",
+    tenY: "4.78%", tenYD: "9/4 最新 · 9/1 盘中破 4.8% 创两年多新高",
+    thirtyY: "5.28%", thirtyYD: "9/1 收盘 5.277% · 长端利率高位",
+    rateD: "2025-12 起维持不变 · 2026 年五次 FOMC 均按兵不动",
+    trend: [
+      {d:"7/29 会后", v:63.2},
+      {d:"8/19", v:35.0},
+      {d:"8/25", v:41.4},
+      {d:"9/4 非农后", v:50.0},
+      {d:"9/7 最新", v:58.3}
+    ],
+    bull: [
+      {t:"CME FedWatch 定价 9 月加息 25bp 概率 58.3%", s:"2026-09-07 · 市场主线已从“何时降息”转向“是否重启加息”"},
+      {t:"通胀高于 2% 目标已超五年，9/11 CPI 有反弹风险", s:"9/10 PPI 先导 · CPI 是 9/17 凌晨决议前最后关键数据"},
+      {t:"新主席沃什鹰派 + 取消前瞻指引", s:"6 月点阵图鹰派转向：18 位官员预计 2026 年底利率升至 3.75-4.00%"},
+      {t:"10Y 收益率 4.78% 创 2025 年初以来新高，趋势仍向上", s:"9/1 盘中破 4.8% · 30Y 5.28% · 长端利率整体高位"},
+      {t:"中东局势推升油价与通胀预期", s:"霍尔木兹海峡不确定性持续扰动供给与通胀定价"}
+    ],
+    bear: [
+      {t:"市场仍保留 41.7% 的“维持不变”概率", s:"若 9/11 CPI 低于预期，加息定价可能快速回吐"},
+      {t:"10Y 收益率已处近 10 年约 99% 分位", s:"高位继续追多赔率下降、波动加大（分位口径：第三方数据站点测算）"},
+      {t:"8 月非农 +16.2 万虽强，但单月数据不足以确认通胀失控", s:"就业韧性反而支撑“软着陆 → 无需激进加息”的路径"},
+      {t:"加息本身加大经济下行风险，12 月点阵图会议存在不加息路径", s:"点阵图并非一致预期，年内累计加息幅度仍存分歧"}
+    ],
+    /* 情景推演（9 月 CPI / FOMC 专属，9/17 后由 AI 更新替换） */
+    sceValidUntil: "2026-09-17T02:00:00+08:00",
+    sceTitle: "下一关键事件推演：9/11 20:30 美国 8 月 CPI 公布后，三档概率如何变化",
+    sceHead: ["CPI 情景（9/11 20:30 公布）","事件前定价","事件后三档概率（示意推演）"],
+    sceRows: [
+      {c1:"情景 A · CPI 环比 ≥ 0.3%（超预期）", c2:"事件前：加息 58.3% / 维持 41.7%", pills:[["up","加息 → 约 75%"],["hold","维持 → 约 25%"],["down","降息 → 0%"]]},
+      {c1:"情景 B · CPI 环比 ≈ 0.2%（符合预期）", c2:"事件前：加息 58.3% / 维持 41.7%", pills:[["up","加息 → 约 60%"],["hold","维持 → 约 40%"],["down","降息 → 0%"]]},
+      {c1:"情景 C · CPI 环比 ≤ 0.1%（低于预期）", c2:"事件前：加息 58.3% / 维持 41.7%", pills:[["up","加息 → 约 35%"],["hold","维持 → 约 65%"],["down","降息 → 0%"]]}
+    ],
+    sceAfterHead: ["9/17 FOMC 决议结果 → 对后续会议的影响（示意推演）","情景","市场含义"],
+    fomcAfter: [
+      {c1:"若 9/17 加息 25bp", c2:"全年累计加息 1 次", pills:"10 月会议加息概率回落（预期兑现）· 12/8-9 点阵图会议是否连续加息成为新焦点"},
+      {c1:"若 9/17 维持不变", c2:"连续第六次按兵不动", pills:"加息预期后移 · 10/28 与 12/9 会议加息概率上升，12 月点阵图会议为年度收官焦点"}
+    ]
+  };
+
+  /* ============ 固定事件库（一次性事件：央行决议 / 财报 / 大会 / 政治；已发生 + 未来）
+     字段：y 年, d "MM-DD" 或 "MM-中旬", t 时间文本, type, rel, name, sub, s(可选，已发生结果描述) ============ */
+  var FIXED = [
+    /* ---- 2026 已发生（进大事记） ---- */
+    {y:2026, d:"01-27", t:"02:00", type:"cb", rel:"high", name:"FOMC：维持 3.50-3.75% 不变", sub:"2026 年首次会议，利率连续按兵不动", s:""},
+    {y:2026, d:"03-16", t:"--:--", type:"ind", rel:"", name:"英伟达 GTC 2026（圣何塞）", sub:"3/17 黄仁勋 keynote：发布 Vera Rubin、DSX 平台、OpenClaw OS", s:""},
+    {y:2026, d:"03-17", t:"02:00", type:"cb", rel:"high", name:"FOMC：维持不变 · 点阵图全年或仅降息 1 次", sub:"SEP 中值：2026 年底联邦基金利率 3.4%（降息 25bp 路径），11:1 通过", s:""},
+    {y:2026, d:"04-28", t:"02:00", type:"cb", rel:"high", name:"FOMC：维持 3.50-3.75% 不变", sub:"中东局势推升不确定性，委员会维持观望", s:""},
+    {y:2026, d:"05-15", t:"--:--", type:"pol", rel:"high", name:"沃什接任美联储主席（偏鹰）", sub:"取消前瞻指引，市场开始重新定价加息风险（具体就任日以官方为准）", s:""},
+    {y:2026, d:"06-01", t:"--:--", type:"ind", rel:"", name:"GTC 台北 × COMPUTEX 2026", sub:"6/1 keynote：英伟达发布 Vera Rubin 与 Vera CPU，进入智能体 AI 时代", s:""},
+    {y:2026, d:"06-16", t:"02:00", type:"cb", rel:"high", name:"FOMC：维持不变 · 点阵图鹰派转向", sub:"沃什首秀：18 位官员预计 2026 年底利率升至 3.75-4.00%，加息风险上升", s:""},
+    {y:2026, d:"06-24", t:"--:--", type:"ind", rel:"", name:"英伟达 2026 年度股东大会", sub:"美股 AI 龙头治理与路线图事件", s:""},
+    {y:2026, d:"07-28", t:"02:00", type:"cb", rel:"high", name:"FOMC：维持不变 · 会后 9 月加息概率升至 63.2%", sub:"CME 口径：决议前 9 月加息概率 60.2%，会后抬升", s:""},
+    {y:2026, d:"07-30", t:"盘后", type:"stock", rel:"", name:"苹果 FY2026 Q3 财报：营收 1094 亿美元（+16%）", sub:"6 月季度营收与 EPS 创纪录，iPhone/Mac/服务均创新高", s:""},
+    {y:2026, d:"08-26", t:"盘后", type:"stock", rel:"", name:"英伟达 FY2027 Q2 财报", sub:"8/26 盘后发布，AI 算力需求景气度关键验证", s:""},
+    {y:2026, d:"09-01", t:"--:--", type:"stock", rel:"", name:"苹果新 CEO 约翰·特努斯上任", sub:"库克转任执行董事长，苹果进入“后库克时代”，9/10 发布会为其首秀", s:""},
+    {y:2026, d:"09-02", t:"盘后", type:"stock", rel:"", name:"博通 FY2026 Q3 财报", sub:"9/2 盘后发布（营收指引约 294 亿美元、同比增 84%）· 千亿市值半导体龙头", s:""},
+    {y:2026, d:"09-04", t:"20:30", type:"us", rel:"high", name:"8 月非农 +16.2 万超预期", sub:"9/17 凌晨决议前最后一份就业报告，CME 9 月加息概率升至约 58%", s:""},
+    /* ---- 2026 未来固定事件（进日历） ---- */
+    {y:2026, d:"09-08", t:"盘后", type:"stock", rel:"", name:"甲骨文 Oracle FY2027 Q1 财报（千亿市值）", sub:"财报日历聚合站口径 · 云与 AI 订单看点"},
+    {y:2026, d:"09-10", t:"01:00", type:"stock", rel:"", name:"苹果 2026 秋季发布会（Apple Park）", sub:"主题“亮新篇，来耀眼” · 新 CEO 约翰·特努斯首秀 · 折叠屏 iPhone Ultra / iPhone 18 Pro 系列"},
+    {y:2026, d:"09-10", t:"20:15", type:"cb", rel:"low", name:"ECB 欧洲央行利率决议（柏林）", sub:"当前存款利率 2.25% · 决议后 20:45 发布会"},
+    {y:2026, d:"09-11", t:"20:30", type:"us", rel:"high", name:"美国 8 月 CPI（含核心 CPI）", sub:"BLS 官方日历 · 9/17 凌晨决议前最后一块拼图"},
+    {y:2026, d:"09-17", t:"02:00", type:"cb", rel:"high", name:"FOMC 利率决议 + 点阵图 + 发布会（会议 9/15-16，美东 9/16 14:00）", sub:"市场定价加息 25bp 概率 58.3% · 沃什主持 · 决议后 02:30 发布会"},
+    {y:2026, d:"09-17", t:"19:00", type:"cb", rel:"low", name:"BOE 英国央行利率决议", sub:"当前基准利率 3.75% · 北京时间 19:00（预计，以官方为准）"},
+    {y:2026, d:"09-18", t:"11:00", type:"cb", rel:"low", name:"BOJ 日本央行利率决议（9/17-18 会议）", sub:"当前政策利率 1% · 决议约北京时间 11:00 前后公布，以官方为准"},
+    {y:2026, d:"09-24", t:"01:00", type:"ind", rel:"", name:"Meta Connect 2026 主题演讲（9/23-24）", sub:"扎克伯格 keynote · 北京时间 9/24 凌晨（预计）· XR/开源 AI 看点"},
+    {y:2026, d:"09-29", t:"--:--", type:"ind", rel:"", name:"OpenAI DevDay 2026（旧金山 Fort Mason）", sub:"开发者大会 · keynote 全程直播 · 具体时刻以官方为准"},
+    {y:2026, d:"10-13", t:"盘前", type:"stock", rel:"", name:"美股银行业财报季开启：摩根大通 / 美银 / 富国 / 高盛 / 花旗（千亿市值）", sub:"惯例 10/13-15 盘前/盘后密集披露 · 以官方为准"},
+    {y:2026, d:"10-13", t:"20:30", type:"us", rel:"high", name:"美国 9 月 CPI（含核心 CPI）", sub:"BLS 常规发布窗口（10-16 日），以官方公告为准"},
+    {y:2026, d:"10-15", t:"盘后", type:"stock", rel:"", name:"台积电 TSM Q3 财报（千亿市值）", sub:"惯例 10 月中旬 · 全球半导体景气与 AI 资本开支风向标"},
+    {y:2026, d:"10-20", t:"盘后", type:"stock", rel:"", name:"Netflix Q3 财报（预计 10/20）· 强生 Q3（预计 10/20）", sub:"千亿市值公司 · 财报日历聚合站口径"},
+    {y:2026, d:"10-20", t:"--:--", type:"ind", rel:"", name:"英伟达 GTC 柏林 2026（10/20-22）", sub:"NVIDIA 官方 GTC 日程 · AI 算力产业重要事件"},
+    {y:2026, d:"10-21", t:"盘后", type:"stock", rel:"", name:"特斯拉 Q3 财报（约 10/21-28）", sub:"以官方公告为准 · 关注交付量与新车型/FSD 进展"},
+    {y:2026, d:"10-22", t:"盘前", type:"stock", rel:"", name:"可口可乐 Q3 财报（千亿市值，惯例）", sub:"财报日历聚合站口径 · 消费龙头"},
+    {y:2026, d:"10-27", t:"盘后", type:"stock", rel:"", name:"微软 MSFT Q3 财报（预计 10/27-28 盘后）", sub:"千亿市值 · 云与 AI 资本开支关键验证"},
+    {y:2026, d:"10-28", t:"盘后", type:"stock", rel:"", name:"Alphabet Q3（预计 10/28）· Meta Q3（预计 10/28 盘后）· Visa Q4（惯例）", sub:"千亿市值公司 · 财报日历聚合站口径"},
+    {y:2026, d:"10-29", t:"02:00", type:"cb", rel:"high", name:"FOMC 利率决议（会议 10/27-28）", sub:"若 9 月未动，10 月仍是加息焦点（CME 8/25 口径：加息概率 57%）"},
+    {y:2026, d:"10-29", t:"20:15", type:"cb", rel:"low", name:"ECB 欧洲央行利率决议（10/28-29）", sub:"决议后 20:45 发布会 · 以官方为准"},
+    {y:2026, d:"10-30", t:"盘后", type:"stock", rel:"", name:"苹果 FY2026 Q4（预计 10/29 盘后）· 亚马逊 Q3（预计 10/29）", sub:"千亿市值公司 · 财报日历聚合站口径"},
+    {y:2026, d:"10-30", t:"11:00", type:"cb", rel:"low", name:"BOJ 日本央行利率决议（10/29-30）", sub:"决议约北京时间 11:00 前后公布，以官方为准"},
+    {y:2026, d:"11-03", t:"盘后", type:"stock", rel:"", name:"AMD Q3 财报（千亿市值，惯例 11 月初）", sub:"财报日历聚合站口径 · 以官方为准"},
+    {y:2026, d:"11-03", t:"--:--", type:"pol", rel:"low", name:"2026 美国中期选举投票日", sub:"改选全部 435 个众议院席位 + 约 1/3 参议院席位 + 36 个州长 · 北京时间 11/4 凌晨起陆续出票"},
+    {y:2026, d:"11-05", t:"20:00", type:"cb", rel:"low", name:"BOE 英国央行利率决议", sub:"北京时间 20:00（冬令时，预计）· 以官方为准"},
+    {y:2026, d:"11-10", t:"21:30", type:"us", rel:"high", name:"美国 10 月 CPI（含核心 CPI）", sub:"BLS 常规发布窗口，以官方公告为准"},
+    {y:2026, d:"11-12", t:"盘后", type:"stock", rel:"", name:"迪士尼 Q4 财报（千亿市值，惯例 11 月中旬）", sub:"财报日历聚合站口径 · 以官方为准"},
+    {y:2026, d:"11-17", t:"盘后", type:"stock", rel:"", name:"英伟达 FY2027 Q3 财报（已确认 11/17 盘后）· 家得宝 Q3（惯例）", sub:"英伟达已确认 · AI 算力景气度关键验证"},
+    {y:2026, d:"11-17", t:"--:--", type:"ind", rel:"", name:"微软 Ignite 2026（11/17-20 旧金山）", sub:"微软官方日程 · Azure AI / Copilot 路线图"},
+    {y:2026, d:"11-19", t:"盘前", type:"stock", rel:"", name:"沃尔玛 Q3 财报（千亿市值，惯例）", sub:"财报日历聚合站口径 · 美国消费风向标"},
+    {y:2026, d:"11-30", t:"--:--", type:"ind", rel:"", name:"英伟达 GTC 华盛顿（11/30-12/3）", sub:"NVIDIA 官方 GTC 日程"},
+    {y:2026, d:"11-30", t:"--:--", type:"ind", rel:"", name:"AWS re:Invent 2026（11/30-12/4 拉斯维加斯）", sub:"AWS 官方日程 · 云与 AI 生态大会"},
+    {y:2026, d:"12-10", t:"03:00", type:"cb", rel:"high", name:"FOMC 利率决议 + 点阵图（会议 12/8-9）", sub:"2026 年度收官会议 · 花旗/丹斯克预计 12 月加息 25bp，利率或升至 4.00-4.25%"},
+    {y:2026, d:"12-10", t:"21:30", type:"us", rel:"high", name:"美国 11 月 CPI（含核心 CPI）", sub:"BLS 常规发布窗口，以官方公告为准"},
+    {y:2026, d:"12-10", t:"盘后", type:"stock", rel:"", name:"甲骨文 FY2027 Q2 · 博通 FY2026 Q4 财报（千亿市值，惯例 12 月中旬）", sub:"财报日历聚合站口径 · AI 硬件与云订单年度收官看点"},
+    {y:2026, d:"12-中旬", t:"--:--", type:"ov", rel:"low", name:"中国中央经济工作会议（惯例）", sub:"12 月中旬 · 定调 2027 年经济工作 · 以官方公告为准"},
+    {y:2026, d:"12-17", t:"21:15", type:"cb", rel:"low", name:"ECB 欧洲央行利率决议（12/16-17）", sub:"冬令时 · 以官方为准"},
+    {y:2026, d:"12-17", t:"20:00", type:"cb", rel:"low", name:"BOE 英国央行利率决议", sub:"北京时间 20:00（冬令时，预计）· 以官方为准"},
+    {y:2026, d:"12-18", t:"11:00", type:"cb", rel:"low", name:"BOJ 日本央行利率决议（12/17-18）", sub:"决议约北京时间 11:00 前后公布，以官方为准"},
+    /* ---- 2027 固定事件（美联储官网核验日程 + 惯例窗口） ---- */
+    {y:2027, d:"01-上旬", t:"--:--", type:"ind", rel:"", name:"CES 2027 国际消费电子展（拉斯维加斯，惯例）", sub:"惯例 1 月上旬 · 以官方为准"},
+    {y:2027, d:"01-下旬", t:"盘后", type:"stock", rel:"", name:"美股 Q4 财报季：苹果 / 特斯拉 / 微软 / 谷歌 / Meta / 亚马逊（惯例窗口）", sub:"千亿市值公司 · 惯例 1 月底-2 月初密集披露 · 具体日期由 AI 核验后更新"},
+    {y:2027, d:"01-26", t:"03:00", type:"cb", rel:"high", name:"FOMC 利率决议（会议 1/26-27）", sub:"2027 年首场会议 · 日程美联储官网预填 · 概率待 CME 更新"},
+    {y:2027, d:"03-16", t:"02:00", type:"cb", rel:"high", name:"FOMC 利率决议 + 点阵图（会议 3/16-17）", sub:"带 SEP · 丹斯克预计 2027 年 3 月加息 25bp"},
+    {y:2027, d:"04-下旬", t:"盘后", type:"stock", rel:"", name:"美股 Q1 财报季（惯例窗口）", sub:"千亿市值公司 · 惯例 4 月底-5 月初 · 具体日期由 AI 核验后更新"},
+    {y:2027, d:"04-27", t:"02:00", type:"cb", rel:"high", name:"FOMC 利率决议（会议 4/27-28）", sub:"日程美联储官网预填"},
+    {y:2027, d:"06-08", t:"02:00", type:"cb", rel:"high", name:"FOMC 利率决议 + 点阵图（会议 6/8-9）", sub:"带 SEP"},
+    {y:2027, d:"07-下旬", t:"盘后", type:"stock", rel:"", name:"美股 Q2 财报季（惯例窗口）", sub:"千亿市值公司 · 惯例 7 月底-8 月初 · 具体日期由 AI 核验后更新"},
+    {y:2027, d:"07-27", t:"02:00", type:"cb", rel:"high", name:"FOMC 利率决议（会议 7/27-28）", sub:"日程美联储官网预填"},
+    {y:2027, d:"09-14", t:"02:00", type:"cb", rel:"high", name:"FOMC 利率决议 + 点阵图（会议 9/14-15）", sub:"带 SEP"},
+    {y:2027, d:"10-下旬", t:"盘后", type:"stock", rel:"", name:"美股 Q3 财报季（惯例窗口）", sub:"千亿市值公司 · 惯例 10 月底-11 月初 · 具体日期由 AI 核验后更新"},
+    {y:2027, d:"10-26", t:"02:00", type:"cb", rel:"high", name:"FOMC 利率决议（会议 10/26-27）", sub:"日程美联储官网预填"},
+    {y:2027, d:"12-07", t:"03:00", type:"cb", rel:"high", name:"FOMC 利率决议 + 点阵图（会议 12/7-8）", sub:"2027 年度收官会议 · 带 SEP"},
+    {y:2027, d:"12-中旬", t:"--:--", type:"ov", rel:"low", name:"中国中央经济工作会议（惯例）", sub:"12 月中旬 · 定调 2028 年经济工作 · 以官方公告为准"}
+  ];
+
+  /* ============ 每月惯例规则（自动滚动未来 12 个月；已过即弃，不进大事记） ============ */
+  var RULES = [
+    {key:"nf", type:"us", rel:"high", name:"美国非农就业报告（NFP）", sub:"BLS · 每月首个周五 · 夏令时 20:30 / 冬令时 21:30",
+     gen:function(y,m){ var f=new Date(y,m-1,1); var w=f.getDay(); var friday=1+((5-w+7)%7); return {d:(friday<10?"0":"")+friday, t:(m>=3&&m<=10)?"20:30":"21:30"}; }},
+    {key:"cpi", type:"us", rel:"high", name:"美国 CPI（含核心 CPI）", sub:"BLS 常规发布窗口（10-16 日）· 以官方当月公告为准",
+     gen:function(){ return {d:"15", t:"20:30"}; }, skip:{y:2027,m:1}},
+    {key:"ppi", type:"us", rel:"low", name:"美国 PPI（生产者物价指数）", sub:"BLS 常规发布窗口（CPI 前一日附近）· 以官方公告为准",
+     gen:function(){ return {d:"14", t:"20:30"}; }, skip:{y:2026,m:10}},
+    {key:"pce", type:"us", rel:"low", name:"美国核心 PCE 物价指数", sub:"BEA · 美联储锚定通胀指标 · 每月末发布",
+     gen:function(y,m){ var last=new Date(y,m,0).getDate(); return {d:(""+last), t:(m>=3&&m<=10)?"20:30":"21:30"}; }},
+    {key:"cncpi", type:"ov", rel:"low", name:"中国 CPI / PPI", sub:"国家统计局 · 每月 9 日前后惯例发布",
+     gen:function(){ return {d:"09", t:"09:30"}; }},
+    {key:"lpr", type:"ov", rel:"high", name:"中国 LPR 报价（一年期 / 五年期以上）", sub:"中国人民银行 · 每月 20 日惯例（遇周末顺延）",
+     gen:function(){ return {d:"20", t:"09:00"}; }}
+  ];
+
+  function el(id){ return document.getElementById(id); }
+  function pad(n){ return (n<10?"0":"")+n; }
+
+  /* ============ 实时行情：东方财富公开行情接口（免费、无鉴权、支持 CORS） ============ */
+  var QUOTES = [
+    {secid:"171.US10Y", code:"US10Y", name:"10Y 美债收益率", dec:4, suffix:"%"},
+    {secid:"171.US30Y", code:"US30Y", name:"30Y 美债收益率", dec:4, suffix:"%"},
+    {secid:"171.US2Y",  code:"US2Y",  name:"2Y 美债收益率",  dec:4, suffix:"%"},
+    {secid:"171.US5Y",  code:"US5Y",  name:"5Y 美债收益率",  dec:4, suffix:"%"},
+    {secid:"100.UDI",   code:"UDI",   name:"美元指数 DXY",   dec:2, suffix:""},
+    {secid:"100.NDX",   code:"NDX",   name:"纳斯达克",        dec:2, suffix:""},
+    {secid:"100.SPX",   code:"SPX",   name:"标普 500",        dec:2, suffix:""},
+    {secid:"100.DJIA",  code:"DJIA",  name:"道琼斯",          dec:2, suffix:""},
+    {secid:"102.CL00Y", code:"CL00Y", name:"WTI 原油",        dec:2, suffix:""},
+    {secid:"101.GC00Y", code:"GC00Y", name:"COMEX 黄金",      dec:2, suffix:""}
+  ];
+  var _qFetching = false;
+  function fetchQuotes(){
+    var box = el("qBox"); if(!box || _qFetching) return;
+    _qFetching = true;
+    var secids = QUOTES.map(function(q){ return q.secid; }).join(",");
+    var url = "https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids="+secids+"&fields=f2,f3,f4,f12,f14";
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 9000);
+    var req = {cache:"no-store"};
+    if(ctrl) req.signal = ctrl.signal;
+    fetch(url, req)
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(j){ clearTimeout(timer); _qFetching = false; renderQuotes(j); })
+      .catch(function(e){ clearTimeout(timer); _qFetching = false; failQuotes(e); });
+  }
+  function renderQuotes(j){
+    var box = el("qBox"); if(!box) return;
+    if(!j || !j.data || !j.data.diff || !j.data.diff.length){ failQuotes(new Error("empty")); return; }
+    var map = {};
+    for(var i=0;i<j.data.diff.length;i++){ if(j.data.diff[i].f12) map[j.data.diff[i].f12] = j.data.diff[i]; }
+    var now = new Date();
+    var tstr = pad(now.getHours())+":"+pad(now.getMinutes())+":"+pad(now.getSeconds());
+    var html = "", okCnt = 0;
+    for(var k=0;k<QUOTES.length;k++){
+      var q = QUOTES[k];
+      var d = map[q.code];
+      if(!d || d.f2===null || d.f2==="-" || d.f2===undefined || isNaN(Number(d.f2))){
+        html += '<div class="q-card"><div class="k">'+q.name+'</div><div class="v num">—</div><div class="ch ch-hold">无数据</div></div>';
+        continue;
+      }
+      okCnt++;
+      var v = Number(d.f2).toFixed(q.dec)+q.suffix;
+      var ch = Number(d.f3);
+      var cls = ch>0.0001 ? "ch-up" : (ch<-0.0001 ? "ch-down" : "ch-hold");
+      var chs = (ch>0?"+":"")+ch.toFixed(2)+"%";
+      html += '<div class="q-card"><div class="k">'+q.name+'</div><div class="v num">'+v+'</div><div class="ch '+cls+'">'+chs+'</div></div>';
+    }
+    box.innerHTML = html;
+    var qt = el("qTime"); if(qt) qt.textContent = tstr+(okCnt>0?"":"（部分缺失）");
+    /* 同步核心指标卡 */
+    setCore("liveT10", "US10Y", 4, "10Y");
+    setCore("liveT30", "US30Y", 4, "30Y");
+    setCore("liveT2", "US2Y", 4, "2Y");
+  }
+  function setCore(vId, code, dec, label){
+    var vEl = el(vId); if(!vEl) return;
+    var d = window.__qmap && window.__qmap[code];
+    if(!d || isNaN(Number(d.f2))) return;
+    var ch = Number(d.f3);
+    vEl.textContent = Number(d.f2).toFixed(dec)+"%";
+    vEl.style.color = ch>0.0001 ? "var(--up)" : (ch<-0.0001 ? "var(--down)" : "var(--hold)");
+    var dEl = el(vId+"D");
+    if(dEl) dEl.textContent = "实时 "+(new Date().getHours())+":"+pad(new Date().getMinutes())+" · "+(ch>0?"+":"")+ch.toFixed(2)+"%";
+  }
+  function failQuotes(e){
+    var box = el("qBox"); if(!box) return;
+    box.innerHTML = '<div class="empty">实时行情获取失败（'+(e && e.message ? e.message : "网络或接口异常")+'）· 显示静态快照，60 秒后自动重试。</div>';
+    var t = el("qTime"); if(t) t.textContent = "获取失败";
+  }
+  /* renderQuotes 里把 map 暴露给 setCore */
+  (function(){
+    var _rq = renderQuotes;
+    renderQuotes = function(j){
+      if(j && j.data && j.data.diff){
+        var mm = {};
+        for(var i=0;i<j.data.diff.length;i++){ if(j.data.diff[i].f12) mm[j.data.diff[i].f12] = j.data.diff[i]; }
+        window.__qmap = mm;
+      }
+      _rq(j);
+    };
+  })();
+
+  /* ---- 时间工具 ---- */
+  function tsOf(ev){
+    var d = ev.d, mm, dd;
+    if(d.indexOf("中旬")>=0){ mm=parseInt(d.slice(0,2)); dd=15; }
+    else if(d.indexOf("上旬")>=0){ mm=parseInt(d.slice(0,2)); dd=7; }
+    else if(d.indexOf("下旬")>=0){ mm=parseInt(d.slice(0,2)); dd=24; }
+    else { mm=parseInt(d.slice(0,2)); dd=parseInt(d.slice(3,5)); }
+    return Date.UTC(ev.y, mm-1, dd, 4, 0, 0); /* 按当日 12:00（北京）近似比较 */
+  }
+  function fmtDate(d){
+    if(d.indexOf("中旬")>=0){ return d.slice(0,2)+"月中旬"; }
+    if(d.indexOf("上旬")>=0){ return d.slice(0,2)+"月上旬"; }
+    if(d.indexOf("下旬")>=0){ return d.slice(0,2)+"月下旬"; }
+    return parseInt(d.slice(0,2))+"月"+parseInt(d.slice(3,5))+"日";
+  }
+  function nowTs(){ return Date.now(); }
+
+  /* ---- Tab 路由 ---- */
+  function showTab(name){
+    var views = document.querySelectorAll(".view");
+    for(var i=0;i<views.length;i++){ views[i].hidden = (views[i].id !== "view-"+name); }
+    var tabs = document.querySelectorAll(".tab");
+    for(var j=0;j<tabs.length;j++){ tabs[j].classList.toggle("active", tabs[j].getAttribute("data-tab")===name); }
+  }
+  function route(){
+    var h = (location.hash||"#overview").replace("#","");
+    var ok = ["overview","calendar","timeline"].indexOf(h)>=0;
+    showTab(ok ? h : "overview");
+  }
+  window.addEventListener("hashchange", route);
+
+  /* ---- 概率路径条 ---- */
+  function renderPath(host, arr){
+    var box = el(host); if(!box) return;
+    if(!arr){ box.innerHTML = '<div class="empty">本场会议概率待 CME FedWatch 数据更新（下一场会议决议后自动切换至本场）。</div>'; return; }
+    var html = "";
+    for(var i=0;i<arr.length;i++){
+      var it = arr[i];
+      var col = it.cls==="up" ? "var(--up)" : (it.cls==="down" ? "var(--down)" : "var(--hold)");
+      html += '<div class="path-row">'
+        + '<div class="plabel"><span>'+it.label+'</span><span class="p num" style="color:'+col+';">'+it.p.toFixed(1)+'%</span></div>'
+        + '<div class="track"><div class="fill fill-'+it.cls+'" style="width:'+it.p.toFixed(1)+'%;"></div></div>'
+        + '</div>';
+    }
+    box.innerHTML = html;
+  }
+
+  /* ---- 演化趋势 ---- */
+  function renderTrend(){
+    var box = el("trendBox"); if(!box) return;
+    var arr = D.trend;
+    var html = "";
+    for(var i=0;i<arr.length;i++){
+      var h = Math.max(4, arr[i].v);
+      html += '<div class="tc"><div class="tv num">'+arr[i].v.toFixed(1)+'%</div><div class="tb" style="height:'+h+'%;"></div><div class="tl">'+arr[i].d+'</div></div>';
+    }
+    box.innerHTML = html;
+  }
+
+  /* ---- 加息/维持方向理由 ---- */
+  function renderReasons(host, arr, cls){
+    var box = el(host); if(!box) return;
+    var tag = cls==="bull" ? "加" : "稳";
+    var html = "";
+    for(var i=0;i<arr.length;i++){
+      html += '<div class="reason"><span class="ic ic-'+cls+'">'+tag+'</span>'
+        + '<div>'+arr[i].t+'<span class="src">'+arr[i].s+'</span></div></div>';
+    }
+    box.innerHTML = html;
+  }
+
+  /* ---- 下一关键事件情景推演 ---- */
+  function renderSce(expired){
+    var box = el("sceBox"); if(!box) return;
+    if(expired){
+      el("sceTitle").textContent = "上一期推演已过期（9 月 CPI / FOMC 已落地）";
+      el("sceNote").textContent = "下一期情景推演将在数据更新时替换为本期结果与下一关键事件的推演。";
+      box.innerHTML = '<div class="empty">本期推演随 9/17 决议落地而失效。9 月会议实际结果与下一关键事件的概率影响，将在每日数据核验更新时写入。</div>';
+      return;
+    }
+    el("sceTitle").textContent = D.sceTitle;
+    el("sceNote").textContent = "说明：情景概率为基于“数据方向 → 加息定价上修/回吐”一致性逻辑的示意推演（非 CME 实时数据），实际以 CPI 公布后的 FedWatch 实时数据为准。";
+    var html = '<div class="sce"><div class="sce-row head"><span class="c1">'+D.sceHead[0]+'</span><span class="c2">'+D.sceHead[1]+'</span><span class="c3">'+D.sceHead[2]+'</span></div>';
+    for(var i=0;i<D.sceRows.length;i++){
+      var r = D.sceRows[i];
+      var p = "";
+      for(var j=0;j<r.pills.length;j++){
+        p += '<span class="pill pill-'+r.pills[j][0]+'">'+r.pills[j][1]+'</span>';
+      }
+      html += '<div class="sce-row"><span class="c1">'+r.c1+'</span><span class="c2">'+r.c2+'</span><span class="c3">'+p+'</span></div>';
+    }
+    html += '<div class="sce-row head"><span class="c1">'+D.sceAfterHead[0]+'</span><span class="c2">'+D.sceAfterHead[1]+'</span><span class="c3">'+D.sceAfterHead[2]+'</span></div>';
+    for(var k=0;k<D.fomcAfter.length;k++){
+      var f = D.fomcAfter[k];
+      html += '<div class="sce-row"><span class="c1">'+f.c1+'</span><span class="c2">'+f.c2+'</span><span class="c3">'+f.pills+'</span></div>';
+    }
+    html += '</div>';
+    box.innerHTML = html;
+  }
+
+  /* ---- 总览：下一场 / 次场会议动态渲染 ---- */
+  function renderMeeting(){
+    var now = nowTs();
+    var idx = -1;
+    for(var i=0;i<MEETINGS.length;i++){ if(Date.parse(MEETINGS[i].iso) > now){ idx = i; break; } }
+    var nxt = idx>=0 ? MEETINGS[idx] : null;
+    var nxt2 = idx>=0 && idx+1<MEETINGS.length ? MEETINGS[idx+1] : null;
+
+    /* 核心指标卡“下次议息会议” */
+    if(nxt){
+      el("nextCardV").textContent = nxt.mo+nxt.day;
+      var days = Math.ceil((Date.parse(nxt.iso)-now)/86400000);
+      var badge = el("nextSepBadge");
+      if(nxt.sep) badge.innerHTML = '<span class="tag tag-accent" style="margin-left:6px;">带点阵图</span>';
+      el("nextCardD").textContent = "北京时间 "+(nxt.iso.slice(11,16)||"")+" 决议 · 距决议约 "+days+" 天 · "+(nxt.fw ? "加息概率 "+nxt.fw[0].p.toFixed(1)+"%" : "概率待更新");
+      el("nextCardTag").textContent = nxt.fw ? "市场焦点" : "待数据更新";
+    }
+    /* 头部 */
+    if(nxt){
+      var days2 = Math.ceil((Date.parse(nxt.iso)-now)/86400000);
+      el("stampBox").innerHTML = "数据快照：<b>"+D.stamp+"</b> "+D.stampTime+"（北京时间）<br>下一场 FOMC：<b>"+nxt.mo+nxt.day+"</b> · 北京时间 "+(nxt.iso.slice(11,16))+" 决议（约 "+days2+" 天后）";
+    }
+    /* 面板一：下一场 */
+    el("fwH1").innerHTML = nxt ? nxt.mo+nxt.day+" FOMC 会议<span class=\"mtg\">北京时间 "+(nxt.iso.slice(11,16))+" 决议"+(nxt.sep?" · 带点阵图":"")+"</span>" : "暂无已排期会议";
+    el("fwSrc1").textContent = nxt ? ("数据源："+nxt.src) : "";
+    renderPath("pathSep", nxt ? nxt.fw : null);
+    el("fwNote1").textContent = nxt ? nxt.note : "";
+    /* 面板二：次场预告 */
+    if(nxt2){
+      el("fwH2").innerHTML = nxt2.mo+nxt2.day+" FOMC 会议<span class=\"mtg\">北京时间 "+(nxt2.iso.slice(11,16))+" 决议"+(nxt2.sep?" · 带点阵图":"")+"</span>";
+      el("fwSrc2").textContent = "数据源："+nxt2.src;
+      renderPath("pathOct", nxt2.fw);
+      el("fwNote2").textContent = nxt2.note;
+    }else{
+      el("fwH2").textContent = "后续会议";
+      el("fwSrc2").textContent = "";
+      renderPath("pathOct", null);
+      el("fwNote2").textContent = "2027 年八场会议日程已按美联储官网预填；CME 概率将在临近时更新。";
+    }
+    /* 三档面板 */
+    if(nxt){
+      var t = nxt.fw;
+      el("threeTitle").textContent = nxt.mo+nxt.day+" FOMC 会议：加息 25bp / 维持不变 / 降息 25bp 概率";
+      if(t){
+        el("threeHint").textContent = "加息 / 维持 / 降息 · "+nxt.src;
+        el("threeRatio").innerHTML = '<span style="color:var(--up);">加息 '+(t[0]?t[0].p.toFixed(1):"--")+'%</span> · <span style="color:var(--hold);">维持 '+(t[1]?t[1].p.toFixed(1):"--")+'%</span> · <span style="color:var(--down);">降息 '+(t[2]?t[2].p.toFixed(1):"--")+'%</span>';
+        el("threeLegend").innerHTML = t.map(function(x){
+          return '<span style="color:'+(x.cls==="up"?"var(--up)":(x.cls==="down"?"var(--down)":"var(--hold)"))+';">'+x.label+'</span>';
+        }).join("");
+        el("threeNote").textContent = "口径：三档概率直接读取 CME FedWatch 市场公允定价（"+D.stamp+"）。下方两栏为支撑各方向的市场信息，非 AI 主观判断。";
+        el("bullTitle").textContent = "加息方向依据（"+(t[0]?t[0].p.toFixed(1):"--")+"%）";
+        el("bearTitle").textContent = "维持 / 宽松方向依据（"+(t[1]?t[1].p.toFixed(1):"--")+"%）";
+      }else{
+        el("threeHint").textContent = "本场会议概率待 CME 更新";
+        el("threeRatio").textContent = "待数据更新";
+        el("threeLegend").textContent = "";
+        el("threeNote").textContent = "口径：三档概率直接读取 CME FedWatch 市场公允定价；本场会议临近时更新。";
+      }
+      renderPath("pathThree", t);
+    }
+  }
+
+  /* ---- 日历 + 大事记：单一事件库自动分流 ---- */
+  function buildEvents(){
+    var now = nowTs();
+    var evs = [];
+    var i, y, m;
+    /* 固定事件 */
+    for(i=0;i<FIXED.length;i++){
+      var f = FIXED[i];
+      evs.push({y:f.y, d:f.d, t:f.t, type:f.type, rel:f.rel, name:f.name, sub:f.sub, s:f.s||"", ts:tsOf(f)});
+    }
+    /* 规则事件：当前月起滚动 12 个月 */
+    var ny = new Date();
+    var sy = ny.getFullYear(), sm = ny.getMonth()+1;
+    for(var k=0;k<12;k++){
+      var y2 = sy, m2 = sm+k;
+      if(m2>12){ m2-=12; y2++; }
+      for(var r=0;r<RULES.length;r++){
+        var rule = RULES[r];
+        if(rule.skip && (y2<rule.skip.y || (y2===rule.skip.y && m2<rule.skip.m))) continue;
+        var g = rule.gen(y2,m2);
+        var dstr = pad(m2)+"-"+pad(parseInt(g.d));
+        var ts = Date.UTC(y2, m2-1, parseInt(g.d), 4, 0, 0);
+        if(ts <= now) continue; /* 已过即弃 */
+        evs.push({y:y2, d:dstr, t:g.t, type:rule.type, rel:rule.rel, name:rule.name, sub:rule.sub, s:"", ts:ts});
+      }
+    }
+    return evs;
+  }
+
+  function stBadge(ev){
+    if(ev.ts <= nowTs()) return '<span class="st st-done">已发生</span>';
+    if(ev.t==="--:--") return '<span class="st st-regular">未发生 · 常规窗口</span>';
+    return '<span class="st st-wait">未发生 · 已排期</span>';
+  }
+
+  function renderCalendar(){
+    var box = el("calBox"); if(!box) return;
+    var now = nowTs();
+    var evs = buildEvents().filter(function(e){ return e.ts > now; });
+    evs.sort(function(a,b){ return a.ts-b.ts; });
+    var html = "", total = 0;
+    var groups = [];
+    var cur = null;
+    for(var i=0;i<evs.length;i++){
+      var e = evs[i];
+      var key = e.y+"年"+e.d.slice(0,2)+"月";
+      if(!cur || cur.key!==key){ cur = {key:key, title:(e.y===2026?"":e.y+" 年 ")+e.d.slice(0,2)+"月", rows:[]}; groups.push(cur); }
+      cur.rows.push(e);
+    }
+    for(var g=0;g<groups.length;g++){
+      var mo = groups[g];
+      html += '<div class="cal-month"><div class="cal-mh"><span class="m">'+mo.title+'</span><span class="c">共 '+mo.rows.length+' 项</span><span class="tz">以下均为北京时间</span></div>';
+      for(var r=0;r<mo.rows.length;r++){
+        var it = mo.rows[r]; total++;
+        var relCls = it.rel==="high" ? " rel-high" : (it.rel==="low" ? " rel-low" : "");
+        html += '<div class="cal-row'+relCls+'">'
+          + '<div class="cal-time num">'+fmtDate(it.d)+'<span class="min">'+it.t+'</span></div>'
+          + '<div class="cal-main"><span class="tp tp-'+it.type+'">'+TYPES[it.type]+'</span>'+stBadge(it)+'<span class="cal-name">'+it.name+'</span>'
+          + '<div class="cal-sub">'+it.sub+'</div></div>'
+          + '<div class="cal-flag">'+(it.ts<=now?"已发生 · 自动移入大事记":"未发生 · "+(it.t==="--:--"?"常规窗口":"已排期"))+'</div>'
+          + '</div>';
+      }
+      html += '</div>';
+    }
+    box.innerHTML = html || '<div class="empty">暂无已排期事件。</div>';
+    var cnt = el("calCnt"); if(cnt) cnt.textContent = total+" 项";
+  }
+
+  function renderTimeline(){
+    var box = el("tlBox"); if(!box) return;
+    var now = nowTs();
+    var evs = buildEvents().filter(function(e){ return e.ts <= now; });
+    evs.sort(function(a,b){ return b.ts-a.ts; });
+    var html = "";
+    for(var i=0;i<evs.length;i++){
+      var it = evs[i];
+      var desc = it.s || ("已发生 · 结果待核验（每日数据更新时补充）");
+      html += '<div class="tl-item"><span class="tdot"></span>'
+        + '<div class="tdate num">'+(it.y===2026?"":it.y+" 年 ")+fmtDate(it.d)+'</div>'
+        + '<div class="tname">'+it.name+'</div>'
+        + '<div class="tdesc">'+desc+'</div></div>';
+    }
+    box.innerHTML = html || '<div class="empty">暂无已发生事件。</div>';
+    var cnt = el("tlCnt"); if(cnt) cnt.textContent = evs.length+" 项";
+  }
+
+  /* ---- 启动 ---- */
+  renderMeeting();
+  renderTrend();
+  renderReasons("bullList", D.bull, "bull");
+  renderReasons("bearList", D.bear, "bear");
+  renderSce(nowTs() > Date.parse(D.sceValidUntil));
+  renderCalendar();
+  renderTimeline();
+  fetchQuotes();
+  setInterval(function(){ if(!document.hidden) fetchQuotes(); }, 60000);
+  var rb = el("reloadBtn");
+  if(rb) rb.addEventListener("click", function(){ fetchQuotes(); });
+  route();
+})();
+</script>
+</body>
+</html>
