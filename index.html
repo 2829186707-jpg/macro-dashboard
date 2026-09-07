@@ -219,9 +219,9 @@
     </section>
 
     <section>
-      <div class="sec-title"><span class="bar"></span>实时行情<span class="hint">免费 API 直连（东方财富公开行情）· 每 60 秒自动刷新 · 获取失败自动回退快照</span><button class="mini-btn" id="reloadBtn">手动刷新</button></div>
+      <div class="sec-title"><span class="bar"></span>实时行情<span class="hint">双源直连（腾讯财经 + 东方财富）· 每 60 秒自动刷新 · 获取失败自动回退快照</span><button class="mini-btn" id="reloadBtn">手动刷新</button></div>
       <div class="q-wrap" id="qBox"><div class="empty">正在连接行情接口…</div></div>
-      <div class="q-note">数据源：东方财富公开行情接口（push2.eastmoney.com，无鉴权免费）· 更新时间：<b id="qTime">—</b>（北京时间）· 美债/指数/商品均为美东交易时段最新价，休市时显示最近收盘价</div>
+      <div class="q-note">数据源：腾讯财经（qt.gtimg.cn，美股三大指数 / WTI / COMEX 黄金）+ 东方财富（push2delay，美债收益率 / 美元指数）· 更新时间：<b id="qTime">—</b>（北京时间）· 任一数据源失败自动降级为快照并提示，不影响其余品种</div>
     </section>
 
     <section>
@@ -301,7 +301,7 @@
 
   <!-- ===== 页脚 ===== -->
   <footer class="foot">
-    <b>实时行情数据源：</b>东方财富公开行情接口（push2.eastmoney.com/api/qt/ulist.np/get，无鉴权、免费、支持浏览器跨域直连），每 60 秒自动刷新，手动可点"刷新"按钮；字段 f2 最新价 / f3 涨跌幅 / f4 涨跌额；美债收益率（US10Y/US30Y/US2Y/US5Y）为东财口径实时报价，与 FRED/财政部 H.15 官方收盘数据可能存在小幅差异；美元指数（UDI）、美股三大指数（NDX/SPX/DJIA）、WTI 原油（CL00Y）、COMEX 黄金（GC00Y）同源。接口异常或断网时自动回退页面静态快照并提示。<br>
+    <b>实时行情数据源：</b>双源直连，互不影响、各自降级——① 腾讯财经（qt.gtimg.cn/q=，CORS 开放、无需鉴权）：美股三大指数（usDJI/usIXIC/usINX）、WTI 纽约原油（hf_CL）、COMEX 纽约黄金（hf_GC）；② 东方财富 push2delay（美债收益率 US10Y/US30Y/US2Y/US5Y 与美元指数 UDI，push2 主域受限时该域名仍可用）。腾讯与东财为独立源：任一源失败只影响其名下品种（回退静态快照并在更新时间旁提示），其余品种照常实时。美债/指数/商品均为美东交易时段最新价，休市时显示最近收盘价。<br>
     <b>数据来源与口径：</b><br>
     ① FOMC 会议日程与利率决议：美联储官网（federalreserve.gov，2026 年八次会议日程 2026-08-19 更新；2027 年日程 2025-09-05 公布、2026-08-19 页面确认）。当前目标区间 3.50-3.75%，2026 年 1/27-28、3/17-18、4/28-29、6/16-17、7/28-29 五次决议均维持不变。北京时间换算：美东时间 +12 小时（夏令时）/ +13 小时（冬令时）。<br>
     ② 加息概率：CME FedWatch（CME“美联储观察”）。9 月会议：2026-09-07 数据（加息 25bp 58.3% / 维持 41.7%）；10 月会议：2026-09-07 口径（维持 40.8 / 加息 25bp 47.4 / 加息 50bp 11.8）；后续会议待数据更新。<br>
@@ -553,39 +553,107 @@
   function el(id){ return document.getElementById(id); }
   function pad(n){ return (n<10?"0":"")+n; }
 
-  /* ============ 实时行情：东方财富公开行情接口（免费、无鉴权、支持 CORS） ============ */
+  /* ============ 实时行情：双源直连（腾讯财经 qt.gtimg.cn 为主源，东方财富 push2delay 补充美债/美元指数） ============ */
   var QUOTES = [
-    {secid:"171.US10Y", code:"US10Y", name:"10Y 美债收益率", dec:4, suffix:"%"},
-    {secid:"171.US30Y", code:"US30Y", name:"30Y 美债收益率", dec:4, suffix:"%"},
-    {secid:"171.US2Y",  code:"US2Y",  name:"2Y 美债收益率",  dec:4, suffix:"%"},
-    {secid:"171.US5Y",  code:"US5Y",  name:"5Y 美债收益率",  dec:4, suffix:"%"},
-    {secid:"100.UDI",   code:"UDI",   name:"美元指数 DXY",   dec:2, suffix:""},
-    {secid:"100.NDX",   code:"NDX",   name:"纳斯达克",        dec:2, suffix:""},
-    {secid:"100.SPX",   code:"SPX",   name:"标普 500",        dec:2, suffix:""},
-    {secid:"100.DJIA",  code:"DJIA",  name:"道琼斯",          dec:2, suffix:""},
-    {secid:"102.CL00Y", code:"CL00Y", name:"WTI 原油",        dec:2, suffix:""},
-    {secid:"101.GC00Y", code:"GC00Y", name:"COMEX 黄金",      dec:2, suffix:""}
+    {src:"em", secid:"171.US10Y", code:"US10Y", name:"10Y 美债收益率", dec:4, suffix:"%"},
+    {src:"em", secid:"171.US30Y", code:"US30Y", name:"30Y 美债收益率", dec:4, suffix:"%"},
+    {src:"em", secid:"171.US2Y",  code:"US2Y",  name:"2Y 美债收益率",  dec:4, suffix:"%"},
+    {src:"em", secid:"171.US5Y",  code:"US5Y",  name:"5Y 美债收益率",  dec:4, suffix:"%"},
+    {src:"em", secid:"100.UDI",   code:"UDI",   name:"美元指数 DXY",   dec:2, suffix:""},
+    {src:"tx", txcode:"usIXIC",  code:"NDX",   name:"纳斯达克",        dec:2, suffix:""},
+    {src:"tx", txcode:"usINX",   code:"SPX",   name:"标普 500",        dec:2, suffix:""},
+    {src:"tx", txcode:"usDJI",   code:"DJIA",  name:"道琼斯",          dec:2, suffix:""},
+    {src:"tx", txcode:"hf_CL",   code:"CL00Y", name:"WTI 原油",        dec:2, suffix:""},
+    {src:"tx", txcode:"hf_GC",   code:"GC00Y", name:"COMEX 黄金",      dec:2, suffix:""}
   ];
   var _qFetching = false;
+
+  function qFetch(url, timeout){
+    var ctrl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = setTimeout(function(){ if(ctrl) ctrl.abort(); }, timeout||9000);
+    var req = {cache:"no-store"};
+    if(ctrl) req.signal = ctrl.signal;
+    return fetch(url, req).then(function(r){
+      clearTimeout(timer);
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      return r;
+    }).catch(function(e){ clearTimeout(timer); throw e; });
+  }
+
+  /* 东财组：美债收益率 + 美元指数（push2delay 域名，push2 主域受限时仍可用） */
+  function fetchEM(list){
+    var secids = list.map(function(q){ return q.secid; }).join(",");
+    var url = "https://push2delay.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids="+secids+"&fields=f2,f3,f4,f12,f14";
+    return qFetch(url).then(function(r){ return r.json(); }).then(function(j){
+      var m = {};
+      if(j && j.data && j.data.diff){
+        for(var i=0;i<j.data.diff.length;i++){
+          var d = j.data.diff[i];
+          if(d && d.f12) m[d.f12] = {f2:d.f2, f3:d.f3, f4:d.f4, f12:d.f12, f14:d.f14};
+        }
+      }
+      return m;
+    });
+  }
+
+  /* 腾讯组：美股三大指数 + WTI + COMEX 黄金（qt.gtimg.cn 返回 GBK 脚本文本，CORS 开放、无需鉴权） */
+  function fetchTX(list){
+    var codes = list.map(function(q){ return q.txcode; }).join(",");
+    var url = "https://qt.gtimg.cn/q="+codes;
+    return qFetch(url).then(function(r){ return r.arrayBuffer(); }).then(function(buf){
+      var txt;
+      try { txt = new TextDecoder("gbk").decode(buf); }
+      catch(e){ txt = new TextDecoder("utf-8").decode(buf); }
+      var m = {};
+      var re = /v_(\w+)="([^"]*)"/g, mm;
+      while((mm = re.exec(txt)) !== null){
+        var key = mm[1], body = mm[2];
+        var item = list.filter(function(q){ return q.txcode === key; })[0];
+        if(!item) continue;
+        if(key.indexOf("hf_") === 0){
+          var f = body.split(",");
+          var v = parseFloat(f[0]);
+          if(isNaN(v)) continue;
+          var ch = parseFloat(f[1]);
+          m[item.code] = {f2: v, f3: isNaN(ch)?0:ch, f4: null, f12: item.code, f14: item.name};
+        } else {
+          var a = body.split("~");
+          if(a.length < 34) continue;
+          var v2 = parseFloat(a[3]);
+          if(isNaN(v2)) continue;
+          var ch2 = parseFloat(a[32]);
+          m[item.code] = {f2: v2, f3: isNaN(ch2)?0:ch2, f4: parseFloat(a[31]), f12: item.code, f14: a[1] || item.name};
+        }
+      }
+      return m;
+    });
+  }
+
   function fetchQuotes(){
     var box = el("qBox"); if(!box || _qFetching) return;
     _qFetching = true;
-    var secids = QUOTES.map(function(q){ return q.secid; }).join(",");
-    var url = "https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids="+secids+"&fields=f2,f3,f4,f12,f14";
-    var ctrl = ("AbortController" in window) ? new AbortController() : null;
-    var timer = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 9000);
-    var req = {cache:"no-store"};
-    if(ctrl) req.signal = ctrl.signal;
-    fetch(url, req)
-      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
-      .then(function(j){ clearTimeout(timer); _qFetching = false; renderQuotes(j); })
-      .catch(function(e){ clearTimeout(timer); _qFetching = false; failQuotes(e); });
+    var groups = {em:[], tx:[]};
+    QUOTES.forEach(function(q){ groups[q.src].push(q); });
+    var tasks = [];
+    if(groups.em.length) tasks.push(fetchEM(groups.em));
+    if(groups.tx.length) tasks.push(fetchTX(groups.tx));
+    Promise.all(tasks.map(function(p){ return p.catch(function(){ return null; }); }))
+      .then(function(rs){
+        _qFetching = false;
+        var merged = {}, srcOk = {};
+        for(var i=0;i<rs.length;i++){
+          var tag = (groups.em.length && i===0) ? "em" : "tx";
+          if(rs[i]){
+            Object.keys(rs[i]).forEach(function(k){ merged[k]=rs[i][k]; });
+            srcOk[tag] = true;
+          }
+        }
+        renderQuotes(merged, srcOk);
+      });
   }
-  function renderQuotes(j){
+
+  function renderQuotes(map, srcOk){
     var box = el("qBox"); if(!box) return;
-    if(!j || !j.data || !j.data.diff || !j.data.diff.length){ failQuotes(new Error("empty")); return; }
-    var map = {};
-    for(var i=0;i<j.data.diff.length;i++){ if(j.data.diff[i].f12) map[j.data.diff[i].f12] = j.data.diff[i]; }
     var now = new Date();
     var tstr = pad(now.getHours())+":"+pad(now.getMinutes())+":"+pad(now.getSeconds());
     var html = "", okCnt = 0;
@@ -604,8 +672,11 @@
       html += '<div class="q-card"><div class="k">'+q.name+'</div><div class="v num">'+v+'</div><div class="ch '+cls+'">'+chs+'</div></div>';
     }
     box.innerHTML = html;
-    var qt = el("qTime"); if(qt) qt.textContent = tstr+(okCnt>0?"":"（部分缺失）");
+    var qt = el("qTime"); if(qt){
+      qt.textContent = tstr+(okCnt>0?"":"（部分缺失）")+(srcOk && !srcOk.em ? " · 东财源失败" : "")+(srcOk && !srcOk.tx ? " · 腾讯源失败" : "");
+    }
     /* 同步核心指标卡 */
+    window.__qmap = map;
     setCore("liveT10", "US10Y", 4, "10Y");
     setCore("liveT30", "US30Y", 4, "30Y");
     setCore("liveT2", "US2Y", 4, "2Y");
@@ -625,18 +696,6 @@
     box.innerHTML = '<div class="empty">实时行情获取失败（'+(e && e.message ? e.message : "网络或接口异常")+'）· 显示静态快照，60 秒后自动重试。</div>';
     var t = el("qTime"); if(t) t.textContent = "获取失败";
   }
-  /* renderQuotes 里把 map 暴露给 setCore */
-  (function(){
-    var _rq = renderQuotes;
-    renderQuotes = function(j){
-      if(j && j.data && j.data.diff){
-        var mm = {};
-        for(var i=0;i<j.data.diff.length;i++){ if(j.data.diff[i].f12) mm[j.data.diff[i].f12] = j.data.diff[i]; }
-        window.__qmap = mm;
-      }
-      _rq(j);
-    };
-  })();
 
   /* ---- 时间工具 ---- */
   function tsOf(ev){
