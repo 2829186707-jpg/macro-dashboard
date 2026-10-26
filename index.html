@@ -879,6 +879,11 @@
   }
 
   /* ---- 总览：下一场 / 次场会议动态渲染 ---- */
+  function meetAgg(fw){
+    var up=0, hold=0, down=0;
+    if(fw){ for(var i=0;i<fw.length;i++){ if(fw[i].cls==="up") up+=fw[i].p; else if(fw[i].cls==="down") down+=fw[i].p; else hold+=fw[i].p; } }
+    return {up:up, hold:hold, down:down};
+  }
   function renderMeeting(){
     var now = nowTs();
     var idx = -1;
@@ -892,7 +897,7 @@
       var days = Math.ceil((Date.parse(nxt.iso)-now)/86400000);
       var badge = el("nextSepBadge");
       if(nxt.sep) badge.innerHTML = '<span class="tag tag-accent" style="margin-left:6px;">带点阵图</span>';
-      el("nextCardD").textContent = "北京时间 "+(nxt.iso.slice(11,16)||"")+" 决议 · 距决议约 "+days+" 天 · "+(nxt.fw ? "加息概率 "+nxt.fw[0].p.toFixed(1)+"%" : "概率待更新");
+      el("nextCardD").textContent = "北京时间 "+(nxt.iso.slice(11,16)||"")+" 决议 · 距决议约 "+days+" 天 · "+(nxt.fw ? "加息概率 "+meetAgg(nxt.fw).up.toFixed(1)+"%" : "概率待更新");
       el("nextCardTag").textContent = nxt.fw ? "市场焦点" : "待数据更新";
     }
     /* 头部 */
@@ -920,16 +925,17 @@
     /* 三档面板 */
     if(nxt){
       var t = nxt.fw;
-      el("threeTitle").textContent = nxt.mo+nxt.day+" FOMC 会议：加息 25bp / 维持不变 / 降息 25bp 概率";
+      var agg = meetAgg(t);
+      el("threeTitle").textContent = nxt.mo+nxt.day+" FOMC 会议：加息 / 维持不变 / 降息 概率";
       if(t){
         el("threeHint").textContent = "加息 / 维持 / 降息 · "+nxt.src;
-        el("threeRatio").innerHTML = '<span style="color:var(--up);">加息 '+(t[0]?t[0].p.toFixed(1):"--")+'%</span> · <span style="color:var(--hold);">维持 '+(t[1]?t[1].p.toFixed(1):"--")+'%</span> · <span style="color:var(--down);">降息 '+(t[2]?t[2].p.toFixed(1):"--")+'%</span>';
+        el("threeRatio").innerHTML = '<span style="color:var(--up);">加息 '+(agg.up?agg.up.toFixed(1):"--")+'%</span> · <span style="color:var(--hold);">维持 '+(agg.hold?agg.hold.toFixed(1):"--")+'%</span> · <span style="color:var(--down);">降息 '+(agg.down?agg.down.toFixed(1):"--")+'%</span>';
         el("threeLegend").innerHTML = t.map(function(x){
           return '<span style="color:'+(x.cls==="up"?"var(--up)":(x.cls==="down"?"var(--down)":"var(--hold)"))+';">'+x.label+'</span>';
         }).join("");
         el("threeNote").textContent = "口径：三档概率直接读取 CME FedWatch 市场公允定价（"+D.stamp+"）。下方两栏为支撑各方向的市场信息，非 AI 主观判断。";
-        el("bullTitle").textContent = "加息方向依据（"+(t[0]?t[0].p.toFixed(1):"--")+"%）";
-        el("bearTitle").textContent = "维持 / 宽松方向依据（"+(t[1]?t[1].p.toFixed(1):"--")+"%）";
+        el("bullTitle").textContent = "加息方向依据（"+(agg.up?agg.up.toFixed(1):"--")+"%）";
+        el("bearTitle").textContent = "维持 / 宽松方向依据（"+(agg.hold?agg.hold.toFixed(1):"--")+"%）";
       }else{
         el("threeHint").textContent = "本场会议概率待 CME 更新";
         el("threeRatio").textContent = "待数据更新";
