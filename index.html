@@ -60,8 +60,12 @@
   .fill-down{background:linear-gradient(90deg,#2E8B5D,#3FA76B);}
   .fill-hold{background:linear-gradient(90deg,#5A6679,#7A8699);}
   .fw-note{margin-top:14px;font-size:11.5px;color:var(--sub);border-top:1px dashed var(--border);padding-top:10px;line-height:1.6;}
-  .trend{display:flex;align-items:flex-end;gap:0;height:70px;margin-top:12px;padding:0 4px;}
-  .trend .tc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;}
+  .trend{display:flex;align-items:flex-end;gap:0;height:76px;margin-top:12px;padding:0 4px;overflow-x:auto;overflow-y:hidden;cursor:grab;scrollbar-width:thin;scrollbar-color:#3A4659 transparent;}
+  .trend.dragging{cursor:grabbing;user-select:none;}
+  .trend::-webkit-scrollbar{height:6px;}
+  .trend::-webkit-scrollbar-track{background:transparent;}
+  .trend::-webkit-scrollbar-thumb{background:#3A4659;border-radius:3px;}
+  .trend .tc{flex:0 0 46px;min-width:46px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;}
   .trend .tb{width:60%;background:linear-gradient(180deg,#F0A83B,#C9801F);border-radius:3px 3px 0 0;min-height:2px;}
   .trend .tl{font-size:10px;color:var(--sub);white-space:nowrap;}
   .trend .tv{font-size:10.5px;font-weight:700;color:var(--accent);}
@@ -805,6 +809,33 @@
     }
     box.innerHTML = html;
   }
+  function bindTrendDrag(){
+    var box = el("trendBox"); if(!box || box._dragBound) return;
+    box._dragBound = true;
+    var down = false, startX = 0, startLeft = 0, moved = false;
+    box.addEventListener("mousedown", function(e){
+      if(e.button !== 0) return;
+      down = true; moved = false;
+      startX = e.clientX; startLeft = box.scrollLeft;
+      box.classList.add("dragging");
+      e.preventDefault();
+    });
+    window.addEventListener("mousemove", function(e){
+      if(!down) return;
+      var dx = e.clientX - startX;
+      if(Math.abs(dx) > 2) moved = true;
+      box.scrollLeft = startLeft - dx;
+    });
+    window.addEventListener("mouseup", function(){
+      down = false; box.classList.remove("dragging");
+    });
+    box.addEventListener("mouseleave", function(){
+      down = false; box.classList.remove("dragging");
+    });
+    box.addEventListener("click", function(e){
+      if(moved){ e.preventDefault(); e.stopPropagation(); moved = false; }
+    });
+  }
 
   /* ---- 加息/维持方向理由 ---- */
   function renderReasons(host, arr, cls){
@@ -1005,6 +1036,7 @@
   /* ---- 启动 ---- */
   renderMeeting();
   renderTrend();
+  bindTrendDrag();
   renderReasons("bullList", D.bull, "bull");
   renderReasons("bearList", D.bear, "bear");
   renderSce(nowTs() > Date.parse(D.sceValidUntil));
