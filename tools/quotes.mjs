@@ -37,7 +37,7 @@ function parseHf(line) {
       out[name] = { price: a[3], chg: a[31], pct: a[32] };
     }
   } catch (e) { out._tx_us = 'FAIL: ' + e.message; }
-  // 腾讯：期货（逗号分隔：[0]最新价 [1]涨跌额 [7]昨结 [13]名称）
+  // 腾讯：期货（逗号分隔：[0]最新价 [1]涨跌幅(%) [6]时间 [7]昨收 [8]开盘 [12]日期 [13]名称）
   try {
     const txt = await txGet(['hf_CL', 'hf_GC']);
     for (const line of txt.split(';')) {
@@ -46,10 +46,17 @@ function parseHf(line) {
       const a = m[1].split(',');
       if (a.length < 14) continue;
       const price = parseFloat(a[0]);
-      const chg = parseFloat(a[1]);
+      const pct = parseFloat(a[1]);      // 注意：腾讯 hf_ 的第 2 个字段是涨跌幅百分比，不是涨跌额
       const prev = parseFloat(a[7]);
-      const pct = prev ? (chg / prev * 100).toFixed(2) : '0.00';
-      out[a[13]] = { price: a[0], chg: a[1], pct, time: a[6], date: a[12] };
+      const chg = prev ? (price - prev) : NaN;
+      out[a[13]] = {
+        price: a[0],
+        chg: isNaN(chg) ? '0.00' : chg.toFixed(2),
+        pct: isNaN(pct) ? '0.00' : pct.toFixed(2),
+        prev: a[7],
+        time: a[6],
+        date: a[12]
+      };
     }
   } catch (e) { out._tx_hf = 'FAIL: ' + e.message; }
   // 东财：美债+美元
